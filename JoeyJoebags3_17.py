@@ -6,6 +6,8 @@ import usb.core
 import usb.util
 #import sys
 #import itertools
+import atexit
+import re
 
 ROMsize=0 
 RAMsize=0
@@ -82,7 +84,7 @@ class Window(Frame):
         GBCammenu.add_command(label='Get Save RAM',command=main_Cam_Dump_RAM)
         GBCammenu.add_command(label='Write Save RAM',command=main_Cam_Burn_RAM)
         
-#Catskull 32k cart menu
+#32k cart menu
         CatMenu = Menu(menu)
         cartTypeMenu.add_cascade(label="Catskull 32k",menu=CatMenu)
         CatMenu.add_command(label='Erase',command=main_Catskull_erase)
@@ -348,14 +350,20 @@ def main_readCartHeader():
     dat = dev.read(0x81,64)
     Header+=dat #Header contains 0xC0 bytes of header data
     ROMsize=(32768*( 2**(Header[0x48])))
-    app.ROMtitleLabel.set("ROM Title: "+str(Header[0x34:0x43],'utf-8'))
+    romName = str(Header[0x34:0x43],'utf-8',"ignore")
+    romName = re.sub(r'\W+', '', romName)
+    app.ROMtitleLabel.set("ROM Name: " + romName )
     app.ROMsizeLabel.set("ROM Size: "+str (32768*( 2**(Header[0x48]))))
     RAMsize=RAMtypes[Header[0x49]]
     app.RAMsizeLabel.set("RAM Size:"+str(RAMsize))
+    root.update()
 #    app.ROMregionLabel.set("Mapper: ?????????")
     
 def main_Exit():
     exit()
+
+def dispose_USB(dev):
+    usb.util.dispose_resources(dev)
 
 def main_LoadROM():
     global ROMsize
@@ -925,7 +933,7 @@ def main_Catskull_write():
             Data1Byte=ROMbuffer[ROMpos:ROMpos+1]
             dev.write(0x01,[0x0A,0x01,0x04,0x55,0x55,0xAA,0x2A,0xAA,0x55,0x55,0x55,0xA0,AddHi,AddLo,Data1Byte[0]])
             ROMpos+=1
-            messagebox.showinfo('Operation Complete','Writing Complete.')
+        messagebox.showinfo('Operation Complete','Writing Complete.')
     return
 #Universal routines
 
@@ -1890,6 +1898,5 @@ if dev is not None:
     messagebox.showinfo("Welcome","Gen3 is a work in progress, please report any bugs or requests to Bennvenn@hotmail.com")
     dev.set_configuration()
     main_CheckVersion()
+    atexit.register(dispose_USB,dev)
     root.mainloop()
-
-
